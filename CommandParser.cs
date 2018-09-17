@@ -5,14 +5,25 @@ namespace HacknetMods.Utils {
     public class CommandParser {
         public List<string> OptionsPrefixes { get; set; }
 
-        public struct Option {
+        /// <summary>
+        /// Holds parsed strings that may be surrounded by single or double quotes.
+        /// </summary>
+        private struct ParsedText {
             public string Text { get; set; }
             public int NextIndex { get; set; }
 
-            public Option(string text, int nextIndex) {
+            public ParsedText(string text, int nextIndex) {
                 Text = text;
                 NextIndex = nextIndex;
             }
+        }
+
+        /// <summary>
+        /// Holds commands and option flags.
+        /// </summary>
+        public struct Command {
+            public string Text { get; set; }
+            public string Flag { get; set; }
         }
 
         public CommandParser(params string[] optionsPrefixes) : this(optionsPrefixes.ToList()) { }
@@ -21,50 +32,58 @@ namespace HacknetMods.Utils {
             OptionsPrefixes = optionsPrefixes;
         }
 
-        public List<string[]> ParseArguments(List<string> args) {
+        /// <summary>
+        /// Parse all arguments, excluding the initial command.
+        /// </summary>
+        public List<Command> ParseArguments(List<string> args) {
             int index = 1;
-            var parsed = new List<string[]>();
-            bool isOption = false;
-            var arg = new string[2];
+            var parsed = new List<Command>();
+            Command command = new Command();
 
             while(index < args.Count) {
-                Option option;
-
-                if(args[index].StartsWith("\"")) {
-                    option = ParseFullOption(args, index, "\"");
-                }
-                else if(args[index].StartsWith("'")) {
-                    option = ParseFullOption(args, index, "'");
-                }
-                else {
-                    option = ParseFullOption(args, index);
+                if(string.IsNullOrEmpty(args[index])) {
+                    index++;
+                    continue;
                 }
 
-                arg[!isOption ? 0 : 1] = option.Text;
-                isOption = OptionsPrefixes.Any(p => arg[index].StartsWith(p));
-                index = option.NextIndex;
+                string delimiter = args[index][0].ToString();
+
+                if(!args[index].StartsWith("\"") && !args[index].StartsWith("'")) {
+                    delimiter = "";
+                }
+
+                var parsedText = Parse(args, index, delimiter);
+                bool isOption = OptionsPrefixes.Any(p => parsedText.Text.StartsWith(p));
+                index = parsedText.NextIndex;
 
                 if(!isOption) {
-                    parsed.Add(arg);
-                    arg = new string[2];
+                    command.Text = parsedText.Text;
+                    parsed.Add(command);
+                    command = new Command();
+                }
+                else {
+                    command.Flag = parsedText.Text;
                 }
             }
 
             return parsed;
         }
 
-        private Option ParseFullOption(List<string> args, int startIndex, string delimiter = "") {
-            string option = args[startIndex];
+        /// <summary>
+        /// Parse individual arguments, including text surrounded by delimiters.
+        /// </summary>
+        private ParsedText Parse(List<string> args, int startIndex, string delimiter = "") {
+            string text = args[startIndex];
             int index = startIndex + 1;
 
             if(!string.IsNullOrEmpty(delimiter)) {
                 do {
-                    option += " " + args[index++];
+                    text += " " + args[index++];
                 }
                 while(index < args.Count && !args[index - 1].EndsWith(delimiter));
             }
 
-            return new Option(option.Trim('"', '\''), index);
+            return new ParsedText(text.Trim('"', '\''), index);
         }
     }
 }
