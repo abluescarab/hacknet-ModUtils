@@ -72,7 +72,7 @@ namespace HacknetMods.Utils {
         /// <summary>
         /// Parse individual arguments, including text surrounded by delimiters.
         /// </summary>
-        private ParsedText Parse(List<string> args, int startIndex, string delimiter = "") {
+        private static ParsedText Parse(List<string> args, int startIndex, string delimiter = "") {
             string text = args[startIndex];
             int index = startIndex + 1;
 
